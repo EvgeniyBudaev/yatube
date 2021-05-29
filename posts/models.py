@@ -11,6 +11,11 @@ class Group(models.Model):
     description = models.TextField(null=True, blank=True,
                                    verbose_name="Описание")
 
+    class Meta:
+        ordering = ['title']
+        verbose_name = 'Группу'
+        verbose_name_plural = 'Группы'
+
     def __str__(self):
         return self.title
 
@@ -26,5 +31,10 @@ class Post(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE,
                                related_name="posts")
 
+    class Meta:
+        ordering = ['-pub_date']
+        verbose_name = 'Пост'
+        verbose_name_plural = 'Посты'
+
     def __str__(self):
-        return self.text
+        return self.text[:15]

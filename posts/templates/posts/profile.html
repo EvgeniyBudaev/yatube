@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "include/base.html" %}
 {% block title %}{{ author.get_full_name }}{% endblock %}
 {% block content %}
   <main role="main" class="container">
@@ -69,7 +69,7 @@
         {% endfor %}
         <!-- Остальные посты -->
         <!-- Здесь постраничная навигация паджинатора -->
-        {% include "paginator.html" %}
+        {% include "include/paginator.html" %}
       </div>
     </div>
   </main>

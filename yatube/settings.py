@@ -24,7 +24,12 @@ SECRET_KEY = 'django-insecure-9p4$*-e8_*qnm&-b6=ob7#c08$1)&4bv8k5dsba#2!412d-(-+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "[::1]",
+    "testserver",
+]
 
 # Application definition
 
@@ -137,3 +142,6 @@ LOGIN_REDIRECT_URL = 'index'
 EMAIL_BACKEND = "django.core.mail.backends.filebased.EmailBackend"
 
 EMAIL_FILE_PATH = os.path.join(BASE_DIR, "sent_emails")
+
+# Constants
+POSTS_IN_PAGINATOR = 10

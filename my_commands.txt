@@ -75,6 +75,56 @@ git push
 
 
 
+
+#  Тестирование
+python manage.py shell
+from django.test import Client
+# Создаём объект класса Client(), эмулятор веб-браузера
+>>> guest_client = Client()
+# — Браузер, сделай GET-запрос к главной странице
+>>> response = guest_client.get('/')
+# Какой код вернула страница при запросе?
+>>> response.status_code
+200  # Страница работает: она вернула код 200
+#  Дополнительная информация:
+status_code — содержит код ответа запрошенного адреса;
+client — объект клиента, который использовался для обращения;
+content — данные ответа в виде строки байтов;
+context — словарь переменных, переданный для отрисовки шаблона при вызове функции render();
+request — объект request, первый параметр view-функции, обработавшей запрос;
+templates — перечень шаблонов, вызванных для отрисовки запрошенной страницы;
+resolver_match — специальный объект, соответствующий path() из списка urlpatterns
+
+#  Выборочный запуск тестов
+# Запустит все тесты проекта
+python3 manage.py test
+
+# Запустит только тесты в приложении posts
+python3 manage.py test posts
+
+# Запустит только тесты из файла test_urls.py в приложении posts
+python3 manage.py test posts.tests.test_urls
+
+# Запустит только тесты из класса StaticURLTests для test_urls.py в приложении posts
+python3 manage.py test posts.tests.test_urls.StaticURLTests
+
+# Запустит только тест test_homepage()
+# из класса StaticURLTests для test_urls.py в приложении posts
+python3 manage.py test posts.tests.test_urls.StaticURLTests.test_homepage
+
+#  Больше информации о результатах теста
+-v (от 0 до 3) по умолчанию равен 1
+python3 manage.py test -v 2
+
+
+#  Coverage - показывает % покрытия тестами
+pip3 install coverage
+coverage run --source='posts,users' manage.py test -v 2
+coverage report
+coverage html #  сохранить в виде HTML
+coverage run #  отчёт будет перезаписан
+
+
 # Django Python shell
 python manage.py shell
 from posts.models import Post, User

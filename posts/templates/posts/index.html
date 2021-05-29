@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "include/base.html" %}
 {% load static %}
 
 {% block title %}Последние обновления на сайте{% endblock %}
@@ -27,6 +27,6 @@
       <hr>{% endif %}
   {% endfor %}
 
-  {% include "paginator.html" %}
+  {% include "include/paginator.html" %}
 
 {% endblock %}

@@ -50,6 +50,7 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+*.cover
 
 # Translations
 *.mo
@@ -297,4 +298,5 @@ yatube/static
 **.static
 */.static/*
 
-
+sent_emails/
+sent_emails
