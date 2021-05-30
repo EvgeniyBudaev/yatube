@@ -1,4 +1,4 @@
-#deals/tests/test_views.py
+# deals/tests/test_views.py
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
@@ -14,42 +14,44 @@ class PostsPagesTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create(username='test_user')
+        cls.group = Group.objects.create(
+            title='Тестовая группа',
+            description='Описание',
+            slug='test-slug',
+        )
+
         cls.post = Post.objects.create(
-                        text='Тестовый текст',
-                        author=PostsPagesTests.user,
-                        group=PostsPagesTests.group
+            text='Тестовый текст',
+            author=cls.user,
         )
 
         cls.post2 = Post.objects.create(
-                        text='Тестовый текст',
-                        author=PostsPagesTests.user,
-                        group=PostsPagesTests.group
+            text='Тестовый текст',
+            author=cls.user,
+            group=cls.group
         )
-
-        cls.group = Group.objects.create(
-                        title='тестовая группа',
-                        description='Описание',
-                        slug='test-slug',
-        )
-
 
     def setUp(self):
         self.guest_client = Client()
         self.authorized_client = Client()
-        self.authorized_client.force_login(PostsPagesTests.user)
+        self.authorized_client.force_login(self.user)
         self.form_fields_new_post = {
             'text': forms.fields.CharField,
             'group': forms.fields.ChoiceField,
         }
+        self.pages_with_posts = [
+            reverse('index'),
+            reverse('group_posts', kwargs={'slug': 'test-slug'})
+        ]
 
     # Проверяем используемые шаблоны
     def test_pages_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
         templates_page_names = {
-            'index.html': reverse('index'),
-            'new.html': reverse('new_post'),
-            'group.html': reverse('group_posts',
-                                  kwargs={'slug': 'test-slug'}),
+            'posts/index.html': reverse('index'),
+            'posts/new_post.html': reverse('new_post'),
+            'posts/group.html': reverse('group_posts',
+                                        kwargs={'slug': 'test-slug'}),
         }
         for template, reverse_name in templates_page_names.items():
             with self.subTest(template=template):
@@ -61,7 +63,7 @@ class PostsPagesTests(TestCase):
         """Шаблон index сформирован с правильным контекстом."""
         response = self.guest_client.get(reverse('index'))
         self.assertEqual(response.context.get('page').object_list[-1],
-                         PostsPagesTests.post)
+                         self.post)
 
     # Проверка словаря context страницы group
     # и созданный пост в этой группе
@@ -70,9 +72,9 @@ class PostsPagesTests(TestCase):
         response = self.guest_client.get(reverse(
             'group_posts', kwargs={'slug': 'test-slug'}
         ))
-        self.assertEqual(response.context['group'], PostsPagesTests.group)
+        self.assertEqual(response.context['group'], self.group)
         self.assertEqual(response.context.get('page').object_list[-1],
-                         PostsPagesTests.post)
+                         self.post2)
 
     # Проверка словаря context и страницы создания поста
     def test_new_page_shows_context(self):
@@ -87,34 +89,28 @@ class PostsPagesTests(TestCase):
     def test_group_pages_not_show_new_post(self):
         """Шаблон group не содержит искомый контекст."""
         response = self.authorized_client.get(
-            reverse('group', kwargs={'slug': 'story'}))
-        self.assertTrue(self.new_post not in response.context['posts'])
+            reverse('group_posts', kwargs={'slug': 'test-slug'}))
+        self.assertTrue(self.post not in response.context['page'])
 
-    # Проверка словаря context главной страницы index
-    # и проверка на то, что созданный пост появился на главной странице
-    def test_index_pages_show_correct_context(self):
-        """Шаблон index сформирован с правильным контекстом."""
+
+class PaginatorViewsTest(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create_user(username='Test User')
+        cls.authorized_client = Client()
+        cls.authorized_client.force_login(cls.user)
+        for count in range(15):
+            cls.post = Post.objects.create(
+                text=f'Тестовый пост номер {count}',
+                author=cls.user)
+
+    def test_first_page_contains_ten_records(self):
         response = self.authorized_client.get(reverse('index'))
-        self.assertEqual(response.context['page'][0].text, 'Тестовый текст')
-        self.assertEqual(response.context['page'][0].author, self.user)
-        self.assertEqual(response.context['page'][0].group, self.group_story)
+        self.assertEqual(len(response.context.get('page').object_list), 10)
 
-    # Проверка paginator: количество постов на первой странице равно 10
-    def test_the_first_page_contains_ten_post_on_index_page(self):
-        """Paginator работает корректно на первой странице."""
-        for view in self.pages_with_posts:
-            with self.subTest(view=view):
-                response = self.authorized_client.get(view)
-                self.assertEqual(
-                    len(response.context.get('page').object_list), 10
-                )
-
-    # Проверка paginator: количество постов на второй странице равно 3
-    def test_the_second_page_contains_three_post_on_index_page(self):
-        """Paginator работает корректно на второй странице."""
-        for view in self.pages_with_posts:
-            with self.subTest(view=view):
-                response = self.authorized_client.get(view + '?page=2')
-                self.assertEqual(
-                    len(response.context.get('page').object_list), 3
-                )
+    def test_second_page_contains_three_records(self):
+        response = self.authorized_client.get(
+            reverse('index') + '?page=2'
+        )
+        self.assertEqual(len(response.context.get('page').object_list), 5)

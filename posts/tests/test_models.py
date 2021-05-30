@@ -27,13 +27,12 @@ class PostModelTest(TestCase):
     def setUpClass(cls):
         super().setUpClass()
 
-        cls.user = User.objects.create(
-            username='author',
-        )
-
+        cls.user = User.objects.create(username='author',)
+        cls.group = Group.objects.create(title='Тестовая группа')
         cls.post = Post.objects.create(
             text='Тестовый текст',
             author=cls.user,
+            group=cls.group
         )
 
     def test_object_name_is_text_field(self):
@@ -41,3 +40,9 @@ class PostModelTest(TestCase):
         post = PostModelTest.post
         expected_object_name = post.text[:15]
         self.assertEqual(expected_object_name, str(post))
+
+    def test_group_title_str(self):
+        """название группы совпадает"""
+        group = PostModelTest.group
+        title = str(group)
+        self.assertEqual(title, group.title)

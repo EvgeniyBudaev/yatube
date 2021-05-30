@@ -1,97 +1,93 @@
 # posts/tests/tests_url.py
 from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
+from django.urls import reverse
 
-from posts.models import Group
+from posts.models import Group, Post
 
 User = get_user_model()
 
 
-class StaticURLTests(TestCase):
-    def setUp(self):
-        # Устанавливаем данные для тестирования
-        # Создаём экземпляр клиента. Он неавторизован.
-        self.guest_client = Client()
-
-    def test_homepage(self):
-        # Отправляем запрос через client,
-        # созданный в setUp()
-        response = self.guest_client.get('/')
-        self.assertEqual(response.status_code, 200)
-
-
-class PostURLTests(TestCase):
+class PostsURLTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.group = Group.objects.create(
-            title='Test title',
-            slug='slug',
-            description='Test description'
-        )
+        cls.group = Group.objects.create(title='Тестовое название',
+                                         slug='test-slug',
+                                         description='Тестовое описание')
+        cls.author = User.objects.create_user(username='TestUser')
+        cls.no_author = User.objects.create_user(username='NoAuthorUser')
+        cls.post = Post.objects.create(author=cls.author,
+                                       text='Тестовый пост')
+        cls.templates_url_names = {
+            'posts/index.html': reverse('index'),
+            'posts/group.html': reverse('group_posts',
+                                  kwargs={'slug': cls.group.slug}),
+            'posts/new_post.html': reverse('new_post'),
+            'posts/profile.html': reverse(
+                'profile',
+                kwargs={'username': cls.author.username}
+            ),
+            'posts/post.html': reverse(
+                'post',
+                kwargs={'username': cls.author.username,
+                        'post_id': cls.post.id}
+            ),
+        }
 
     def setUp(self):
-        # Создаем неавторизованный клиент
         self.guest_client = Client()
-        # Создаем авторизованый клиент
-        self.user = User.objects.create_user(username='EvgeniyBudaev')
-        # Создаем второго неавторизованного клиента
+
         self.authorized_client = Client()
-        # Авторизуем пользователя
-        self.authorized_client.force_login(self.user)
-        # Список URL адресов
-        self.url_names = ['/', '/group/slug/', '/new/']
-        # Доступные URL для анонимного пользователя
-        self.templates_url_names_anonymous = {
-            'posts/index.html': '/',
-            'posts/group.html': '/group/slug/',
-        }
-        # Доступные URL для авторизованного пользователя
-        self.templates_url_names_authorized = {
-            'posts/index.html': '/',
-            'posts/group.html': '/group/slug/',
-            'posts/new_post.html': '/new/',
-        }
+        self.authorized_client.force_login(self.author)
 
-    # Проверяем доступность страниц для анонимного пользователя
-    def test_url_exists_at_desired_location_for_anonymous(self):
-        """URL страниц доступные анонимным
-        пользователям."""
-        for url in self.url_names[:2]:
-            with self.subTest(url=url):
-                response = self.guest_client.get(url)
-                self.assertEqual(response.status_code, 200)
+        self.no_author_client = Client()
+        self.no_author_client.force_login(self.no_author)
 
-    # Проверяем доступность страниц для анонимного пользователя
-    def test_url_exists_at_desired_location_for_authorized(self):
-        """URL страниц доступные авторизованным пользователям."""
-        for url in self.url_names:
-            with self.subTest(url=url):
-                response = self.authorized_client.get(url)
-                self.assertEqual(response.status_code, 200)
-
-    # Проверяем доступность шаблонов для авторизованного пользователя
-    def test_urls_uses_correct_template_anonymous(self):
-        """URL-адрес использует соответствующий шаблон для анонимного
-        пользователя."""
-        for template, url in self.templates_url_names_anonymous.items():
-            with self.subTest(url=url):
-                response = self.guest_client.get(url)
-                self.assertTemplateUsed(response, template)
-
-    # Проверяем доступность шаблонов для авторизованного пользователя
-    def test_urls_uses_correct_template_authorized(self):
-        """URL-адрес использует соответствующий шаблон
-        для авторизованного пользователя."""
-        for template, url in self.templates_url_names_authorized.items():
-            with self.subTest(url=url):
-                response = self.authorized_client.get(url)
-                self.assertTemplateUsed(response, template)
-
-    # Проверяем редиректы для неавторизованного пользователя
-    def test_task_detail_url_redirect_anonymous(self):
-        """Страница /new/ перенаправляет анонимного
-        пользователя.
+    def test_url_for_guest_user(self):
         """
-        response = self.guest_client.get('/new/', follow=True)
-        self.assertRedirects(response, '/auth/login/?next=/new/')
+        Доступность URL гостевому пользователю и проверка редиректа
+        недоступных страниц.
+        """
+        for template, reverse_name in self.templates_url_names.items():
+            with self.subTest():
+                if reverse_name == reverse('new_post'):
+                    response = self.guest_client.get(reverse_name)
+                    self.assertEqual(response.status_code, 302)
+                else:
+                    response = self.guest_client.get(reverse_name)
+                    self.assertEqual(response.status_code, 200)
+        response = self.guest_client.get(
+            reverse('post_edit',
+                    kwargs={'username': self.author.username,
+                            'post_id': self.post.id}),
+        )
+        self.assertEqual(response.status_code, 302)
+
+    def test_url_for_authorized_user(self):
+        """Доступность URL авторизованному пользователю автору поста."""
+        for template, reverse_name in self.templates_url_names.items():
+            with self.subTest():
+                response = self.authorized_client.get(reverse_name)
+                self.assertEqual(response.status_code, 200)
+
+    def test_url_for_no_author_user(self):
+        """Доступность URL авторизованному пользователю НЕ автору поста."""
+        for template, reverse_name in self.templates_url_names.items():
+            with self.subTest():
+                if reverse_name == reverse(
+                        'post_edit',
+                        kwargs={'username': self.author.username,
+                                'post_id': self.post.id}, ):
+                    response = self.no_author_client.get(reverse_name)
+                    self.assertEqual(response.status_code, 302)
+                else:
+                    response = self.no_author_client.get(reverse_name)
+                    self.assertEqual(response.status_code, 200)
+
+    def test_urls_uses_correct_template(self):
+        """URL-адрес использует соответствующий шаблон."""
+        for template, reverse_name in self.templates_url_names.items():
+            with self.subTest():
+                response = self.authorized_client.get(reverse_name)
+                self.assertTemplateUsed(response, template)
