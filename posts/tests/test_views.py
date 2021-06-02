@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
 from django import forms
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 from posts.models import Post, Group
 
@@ -10,25 +11,42 @@ User = get_user_model()
 
 
 class PostsPagesTests(TestCase):
+    uploaded = None
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x02\x00'
+            b'\x01\x00\x80\x00\x00\x00\x00\x00'
+            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+            b'\x0A\x00\x3B'
+        )
+        cls.uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=small_gif,
+            content_type='image/gif'
+        )
         cls.user = User.objects.create(username='test_user')
         cls.group = Group.objects.create(
             title='Тестовая группа',
             description='Описание',
-            slug='test-slug',
+            slug='test-slug'
         )
 
         cls.post = Post.objects.create(
             text='Тестовый текст',
             author=cls.user,
+            image=PostsPagesTests.uploaded,
         )
 
         cls.post2 = Post.objects.create(
             text='Тестовый текст',
             author=cls.user,
-            group=cls.group
+            group=cls.group,
+            image=PostsPagesTests.uploaded,
         )
 
     def setUp(self):
@@ -91,6 +109,11 @@ class PostsPagesTests(TestCase):
         response = self.authorized_client.get(
             reverse('group_posts', kwargs={'slug': 'test-slug'}))
         self.assertTrue(self.post not in response.context['page'])
+
+    def test_page_not_found(self):
+        """Сервер возвращает код 404, если страница не найдена."""
+        response_page_not_found = self.guest_client.get('/tests_url/')
+        self.assertEqual(response_page_not_found.status_code, 404)
 
 
 class PaginatorViewsTest(TestCase):

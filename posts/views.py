@@ -21,7 +21,7 @@ def index(request):
 
 def group_posts(request, slug):
     group = get_object_or_404(Group, slug=slug)
-    posts = Post.objects.filter(group=group).order_by("-pub_date")
+    posts = group.posts.all()
     paginator = Paginator(posts, POSTS_IN_PAGINATOR)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
@@ -85,7 +85,7 @@ def post_edit(request, username, post_id):
     post = get_object_or_404(Post, author__username=username, pk=post_id)
 
     if request.user == post.author:
-        form = PostForm(instance=post, data=request.POST or None)
+        form = PostForm(instance=post, data=request.POST or None, files=request.FILES or None)
 
         if form.is_valid():
             form.save()
@@ -100,3 +100,18 @@ def post_edit(request, username, post_id):
 
     else:
         return redirect('post', username=username, post_id=post_id)
+
+
+def page_not_found(request, exception):
+    # Переменная exception содержит отладочную информацию,
+    # выводить её в шаблон пользователской страницы 404 мы не станем
+    return render(
+        request,
+        "misc/404.html",
+        {"path": request.path},
+        status=404
+    )
+
+
+def server_error(request):
+    return render(request, "misc/500.html", status=500)
